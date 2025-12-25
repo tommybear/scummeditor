@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.DetailsListView">
+  <ItemsControl ItemsSource="{Binding Details}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate>
+        <Grid ColumnDefinitions="140,*" Margin="0,2">
+          <TextBlock Text="{Binding Name}" Foreground="#9BA4B0" />
+          <TextBlock Grid.Column="1" Text="{Binding Value}" Foreground="#E6EDF3" TextWrapping="Wrap" />
+        </Grid>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

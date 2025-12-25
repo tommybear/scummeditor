@@ -1,14 +1,24 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using ScummEditor.AvaloniaApp.Views;
+using ScummEditor.Core;
+using ScummEditor.Encoders;
 using ScummEditor.Structures;
 using ScummEditor.Structures.DataFile;
 using ScummEditor.Structures.IndexFile;
-using System.Reflection;
+using AvaloniaBitmap = Avalonia.Media.Imaging.Bitmap;
+using DrawingBitmap = System.Drawing.Bitmap;
 
 namespace ScummEditor.AvaloniaApp
 {
@@ -17,11 +27,16 @@ namespace ScummEditor.AvaloniaApp
     public ObservableCollection<ResourceNode> Nodes { get; } = new();
     public ObservableCollection<DetailRow> Details { get; } = new();
 
+    private readonly List<ResourceNode> _allNodes = new();
+    private string _currentFilter = string.Empty;
+    private TextBox? _searchBox;
+
     public MainWindow()
     {
       InitializeComponent();
       DataContext = this;
       HookEvents();
+      SetViewer(null);
     }
 
     private void InitializeComponent()
@@ -34,6 +49,24 @@ namespace ScummEditor.AvaloniaApp
       if (this.FindControl<Button>("OpenButton") is { } openButton)
       {
         openButton.Click += async (_, __) => await OnOpenFileAsync();
+      }
+
+      _searchBox = this.FindControl<TextBox>("SearchBox");
+      if (_searchBox != null)
+      {
+        _searchBox.TextChanged += (_, __) =>
+        {
+          _currentFilter = _searchBox.Text ?? string.Empty;
+          ApplyFilter();
+        };
+      }
+
+      if (this.FindControl<Button>("ClearSearchButton") is { } clearButton)
+      {
+        clearButton.Click += (_, __) =>
+        {
+          if (_searchBox != null) _searchBox.Text = string.Empty;
+        };
       }
 
       if (this.FindControl<TreeView>("ResourceTree") is { } tree)
@@ -100,8 +133,7 @@ namespace ScummEditor.AvaloniaApp
 
     private void BuildTree(ScummV6GameData game)
     {
-      Nodes.Clear();
-
+      _allNodes.Clear();
       if (game.IndexFile != null)
       {
         var indexRoot = new ResourceNode("Index File", null);
@@ -113,13 +145,15 @@ namespace ScummEditor.AvaloniaApp
         indexRoot.Children.Add(CreateBlockNode(game.IndexFile.DCOS, "DCOS"));
         indexRoot.Children.Add(CreateBlockNode(game.IndexFile.DCHR, "DCHR"));
         indexRoot.Children.Add(CreateBlockNode(game.IndexFile.DOBJ, "DOBJ"));
-        Nodes.Add(indexRoot);
+        _allNodes.Add(indexRoot);
       }
 
       if (game.DataFile != null)
       {
-        Nodes.Add(CreateBlockNode(game.DataFile, "Data File"));
+        _allNodes.Add(CreateBlockNode(game.DataFile, "Data File"));
       }
+
+      ApplyFilter();
     }
 
     private ResourceNode CreateBlockNode(BlockBase block, string? labelOverride = null)
@@ -160,6 +194,7 @@ namespace ScummEditor.AvaloniaApp
       if (node.Block == null)
       {
         Details.Add(new DetailRow("Info", node.Name));
+        SetViewer(null);
         return;
       }
 
@@ -178,6 +213,262 @@ namespace ScummEditor.AvaloniaApp
         if (!InspectorHelpers.IsSimple(prop.PropertyType)) continue;
         Details.Add(new DetailRow(prop.Name, val?.ToString() ?? string.Empty));
       }
+
+      SetViewer(block);
+    }
+
+    private void ApplyFilter()
+    {
+      Nodes.Clear();
+
+      foreach (var node in FilterNodes(_allNodes, _currentFilter))
+      {
+        Nodes.Add(node);
+      }
+    }
+
+    private static IEnumerable<ResourceNode> FilterNodes(IEnumerable<ResourceNode> source, string filter)
+    {
+      bool hasFilter = !string.IsNullOrWhiteSpace(filter);
+      foreach (var node in source)
+      {
+        var filteredChildren = FilterNodes(node.Children, filter).ToList();
+        bool matches = !hasFilter || node.Name.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+        if (matches || filteredChildren.Count > 0)
+        {
+          var clone = node.CloneShallow();
+          foreach (var child in filteredChildren)
+          {
+            clone.Children.Add(child);
+          }
+          yield return clone;
+        }
+      }
+    }
+
+    private void SetViewer(BlockBase? block)
+    {
+      // Palette view
+      if (block is PaletteData palette)
+      {
+        var view = new PaletteView();
+        view.Load(palette);
+        SetContent(view);
+        return;
+      }
+
+      // Room headers
+      if (block is RoomHeader)
+      {
+        SetContent(new RoomHeaderView { DataContext = block });
+        return;
+      }
+
+      if (block is RoomImageHeader)
+      {
+        SetContent(new RoomImageHeaderView { DataContext = block });
+        return;
+      }
+
+      if (block is DirectoryOfItems directory)
+      {
+        var view = new DirectoryTableView();
+        view.Load(directory);
+        SetContent(view);
+        return;
+      }
+
+      // Images (BOMP)
+      if (block is ImageBomp bomp)
+      {
+        var view = TryCreateBompView(bomp);
+        if (view != null)
+        {
+          SetContent(view);
+          return;
+        }
+      }
+
+      // Z-planes
+      if (block is ZPlane zPlane)
+      {
+        var view = TryCreateZPlaneView(zPlane);
+        if (view != null)
+        {
+          SetContent(view);
+          return;
+        }
+      }
+
+      // Costumes placeholder
+      if (block is Costume costume)
+      {
+        var placeholder = new PlaceholderView();
+        placeholder.SetText("Costume", $"Animations: {costume.NumAnim}, Palette entries: {costume.Palette?.Count ?? 0}, Limbs: {costume.Limbs?.Count ?? 0}");
+        SetContent(placeholder);
+        return;
+      }
+
+      // Scripts / sounds placeholder by block type names
+      if (block != null && (block.BlockType == "SCRP" || block.BlockType == "SOUN"))
+      {
+        var placeholder = new PlaceholderView();
+        placeholder.SetText(block.BlockType, "Preview not implemented yet. Showing hex fallback if available.");
+        var hex = TryHexFallback(block);
+        SetContent(hex ?? placeholder);
+        return;
+      }
+
+      // Not implemented blocks -> hex
+      var hexView = TryHexFallback(block);
+      if (hexView != null)
+      {
+        SetContent(hexView);
+        return;
+      }
+
+      // Default inspector view.
+      var defaultView = new DetailsListView { DataContext = this };
+      SetContent(defaultView);
+    }
+
+    private void SetContent(Control control)
+    {
+      if (this.FindControl<ContentControl>("ViewerHost") is { } host)
+      {
+        host.Content = control;
+      }
+    }
+
+    private Control? TryCreateBompView(ImageBomp bomp)
+    {
+      if (!TryGetObjectImageContext(bomp, out var room, out var obj, out var objectIndex, out var imageIndex, out var imageData))
+      {
+        return TryHexFallback(bomp);
+      }
+
+      try
+      {
+        var decoder = new BompImageDecoder();
+        var bmp = decoder.Decode(room, objectIndex, imageIndex);
+        if (bmp == null) return TryHexFallback(bomp);
+
+        using (bmp)
+        {
+          var avaloniaBmp = ConvertToAvaloniaBitmap(bmp);
+          var view = new ImageBitmapView();
+          view.SetBitmap(avaloniaBmp);
+          return view;
+        }
+      }
+      catch
+      {
+        return TryHexFallback(bomp);
+      }
+    }
+
+    private Control? TryCreateZPlaneView(ZPlane zPlane)
+    {
+      var imageData = zPlane.FindAncestor<ImageData>();
+      var room = zPlane.FindAncestor<RoomBlock>();
+      if (room == null || imageData == null) return TryHexFallback(zPlane);
+
+      try
+      {
+        var decoder = new ZPlaneDecoder();
+        DrawingBitmap bmp;
+
+        var objectImage = zPlane.FindAncestor<ObjectImage>();
+        if (objectImage != null)
+        {
+          var objIndex = room.GetOBIMs().IndexOf(objectImage);
+          var imgIndex = objectImage.GetIMxx().IndexOf(imageData);
+          var zpIndex = imageData.GetZPlanes().IndexOf(zPlane);
+          if (objIndex < 0 || imgIndex < 0 || zpIndex < 0) return TryHexFallback(zPlane);
+          bmp = decoder.Decode(room, objIndex, imgIndex, zpIndex);
+        }
+        else
+        {
+          var zpIndex = imageData.GetZPlanes().IndexOf(zPlane);
+          if (zpIndex < 0) return TryHexFallback(zPlane);
+          bmp = decoder.Decode(room, zpIndex);
+        }
+
+        if (bmp == null) return TryHexFallback(zPlane);
+
+        using (bmp)
+        {
+          var avaloniaBmp = ConvertToAvaloniaBitmap(bmp);
+          var view = new ImageBitmapView();
+          view.SetBitmap(avaloniaBmp);
+          return view;
+        }
+      }
+      catch
+      {
+        return TryHexFallback(zPlane);
+      }
+    }
+
+    private Control? TryHexFallback(BlockBase? block)
+    {
+      if (block is NotImplementedDataBlock notImpl && notImpl.Contents != null)
+      {
+        var view = new HexView();
+        view.Load(notImpl.Contents, notImpl.BlockType);
+        return view;
+      }
+
+      if (block is ValuePaddingBlock valBlock)
+      {
+        var view = new HexView();
+        view.Load(new[] { valBlock.Value, valBlock.Padding }.Select(b => (byte)b).ToArray(), valBlock.BlockType);
+        return view;
+      }
+
+      if (block is ImageBomp bomp && bomp.Data != null)
+      {
+        var view = new HexView();
+        view.Load(bomp.Data, bomp.BlockType);
+        return view;
+      }
+
+      if (block is ZPlane zp && zp.Strips != null)
+      {
+        var combined = zp.Strips.SelectMany(s => s.ImageData ?? Array.Empty<byte>()).ToArray();
+        var view = new HexView();
+        view.Load(combined, zp.BlockType);
+        return view;
+      }
+
+      return null;
+    }
+
+    #pragma warning disable CA1416
+    private static AvaloniaBitmap ConvertToAvaloniaBitmap(DrawingBitmap source)
+    {
+      using var ms = new MemoryStream();
+      source.Save(ms, ImageFormat.Png);
+      ms.Position = 0;
+      return new AvaloniaBitmap(ms);
+    }
+    #pragma warning restore CA1416
+
+    private static bool TryGetObjectImageContext(BlockBase block, out RoomBlock? room, out ObjectImage? obj, out int objectIndex, out int imageIndex, out ImageData? imageData)
+    {
+      room = block.FindAncestor<RoomBlock>();
+      obj = block.FindAncestor<ObjectImage>();
+      imageData = block.FindAncestor<ImageData>();
+      objectIndex = -1;
+      imageIndex = -1;
+
+      if (room == null || obj == null || imageData == null) return false;
+
+      var obims = room.GetOBIMs();
+      objectIndex = obims.IndexOf(obj);
+      imageIndex = obj.GetIMxx().IndexOf(imageData);
+      return objectIndex >= 0 && imageIndex >= 0;
     }
 
     private static string GetGameName(ScummGame game)
@@ -207,6 +498,11 @@ namespace ScummEditor.AvaloniaApp
     public string Name { get; }
     public BlockBase? Block { get; }
     public ObservableCollection<ResourceNode> Children { get; }
+
+    public ResourceNode CloneShallow()
+    {
+      return new ResourceNode(Name, Block);
+    }
   }
 
   public class DetailRow

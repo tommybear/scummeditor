@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:data="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.DataGrid"
+             x:Class="ScummEditor.AvaloniaApp.Views.DirectoryTableView">
+  <StackPanel Spacing="8">
+    <TextBlock Text="Directory" Foreground="#E6EDF3" FontWeight="SemiBold" />
+    <data:DataGrid ItemsSource="{Binding Items}"
+                   GridLinesVisibility="All"
+                   HeadersVisibility="All"
+                   AutoGenerateColumns="False"
+                   CanUserSortColumns="False"
+                   CanUserResizeColumns="True"
+                   Background="#0F1A2B"
+                   RowBackground="#111827"
+                   Foreground="#E6EDF3"
+                   BorderBrush="#1E2A3D"
+                   BorderThickness="1">
+      <data:DataGrid.Columns>
+        <data:DataGridTextColumn Header="Number" Binding="{Binding Number}" Width="80" />
+        <data:DataGridTextColumn Header="Offset" Binding="{Binding Offset}" Width="120" />
+        <data:DataGridTextColumn Header="ItemId" Binding="{Binding ItemId}" Width="*" />
+      </data:DataGrid.Columns>
+    </data:DataGrid>
+  </StackPanel>
+</UserControl>

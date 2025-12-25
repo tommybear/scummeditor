@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.RoomImageHeaderView">
+  <StackPanel Spacing="6">
+    <TextBlock Text="Room Image Header" Foreground="#E6EDF3" FontWeight="SemiBold" />
+    <Grid ColumnDefinitions="140,*">
+      <TextBlock Text="Z-Buffers" Foreground="#9BA4B0" />
+      <TextBlock Grid.Column="1" Text="{Binding NumberOfZBuffers}" Foreground="#E6EDF3" />
+    </Grid>
+  </StackPanel>
+</UserControl>

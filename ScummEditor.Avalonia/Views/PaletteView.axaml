@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.PaletteView">
+  <ScrollViewer Height="560">
+    <ItemsControl ItemsSource="{Binding Entries}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="4" Width="64">
+            <Border Width="48" Height="24" CornerRadius="4" Background="{Binding Brush}" />
+            <TextBlock Text="{Binding Label}" Foreground="#E6EDF3" FontSize="10" />
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.HexView">
+  <StackPanel Spacing="6">
+    <TextBlock Text="Hex Preview" Foreground="#E6EDF3" FontWeight="SemiBold" />
+    <TextBox x:Name="HexText" IsReadOnly="True" AcceptsReturn="True" FontFamily="Consolas" Foreground="#E6EDF3" Background="#0F1A2B" BorderBrush="#1E2A3D" BorderThickness="1" Height="400" TextWrapping="NoWrap" />
+    <TextBlock x:Name="MetaText" Foreground="#9BA4B0" />
+  </StackPanel>
+</UserControl>

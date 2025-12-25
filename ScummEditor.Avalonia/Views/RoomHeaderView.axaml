@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.RoomHeaderView">
+  <StackPanel Spacing="6">
+    <TextBlock Text="Room Header" Foreground="#E6EDF3" FontWeight="SemiBold" />
+    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" >
+      <TextBlock Text="Width" Foreground="#9BA4B0" />
+      <TextBlock Grid.Column="1" Text="{Binding Width}" Foreground="#E6EDF3" />
+      <TextBlock Grid.Row="1" Text="Height" Foreground="#9BA4B0" />
+      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Height}" Foreground="#E6EDF3" />
+      <TextBlock Grid.Row="2" Text="Num Objects" Foreground="#9BA4B0" />
+      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding NumObjects}" Foreground="#E6EDF3" />
+    </Grid>
+  </StackPanel>
+</UserControl>

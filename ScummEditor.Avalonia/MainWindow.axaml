@@ -12,6 +12,8 @@
       <DockPanel LastChildFill="True">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="8">
           <Button x:Name="OpenButton" Content="Open File" Width="120" />
+          <TextBox x:Name="SearchBox" Width="150" Watermark="Filter..." />
+          <Button x:Name="ClearSearchButton" Content="Clear" Width="70" />
         </StackPanel>
         <TreeView x:Name="ResourceTree" ItemsSource="{Binding Nodes}" Margin="0,8,0,0" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827">
           <TreeView.DataTemplates>
@@ -27,16 +29,7 @@
       <StackPanel Spacing="12">
         <TextBlock Foreground="#E6EDF3" FontWeight="SemiBold" Text="Preview" />
         <TextBlock x:Name="DetailsHeader" Foreground="#9BA4B0" Text="Select a node to inspect" />
-        <ItemsControl ItemsSource="{Binding Details}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Grid ColumnDefinitions="140,*" Margin="0,2">
-                <TextBlock Text="{Binding Name}" Foreground="#9BA4B0" />
-                <TextBlock Grid.Column="1" Text="{Binding Value}" Foreground="#E6EDF3" TextWrapping="Wrap" />
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ContentControl x:Name="ViewerHost" />
       </StackPanel>
     </Border>
   </Grid>
