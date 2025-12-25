@@ -47,6 +47,7 @@ namespace ScummEditor
             _xorKey = xorKey;
         }
 
+#if NETFRAMEWORK
         public XoredFileStream(int xorKey, string path, FileMode mode, FileSystemRights rights, FileShare share, int bufferSize, FileOptions options, FileSecurity fileSecurity)
             : base(path, mode, rights, share, bufferSize, options, fileSecurity)
         {
@@ -104,6 +105,7 @@ namespace ScummEditor
         {
             _xorKey = xorKey;
         }
+#endif
 
         #endregion
 

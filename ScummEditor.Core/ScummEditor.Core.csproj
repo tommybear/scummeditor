@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <UseSystemDrawing>true</UseSystemDrawing>
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ScummEditor\**\*.cs"
+         Exclude="..\ScummEditor\Gui\**\*;..\ScummEditor\Properties\**\*;..\ScummEditor\Program.cs;..\ScummEditor\FilePacker*.cs;..\ScummEditor\About*.cs;..\ScummEditor\bin\**\*;..\ScummEditor\obj\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+</Project>

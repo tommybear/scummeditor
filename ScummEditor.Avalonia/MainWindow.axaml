@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="ScummEditor.AvaloniaApp.MainWindow"
+    Title="SCUMM Editor (Avalonia preview)"
+    Width="900" Height="600">
+  <Grid RowDefinitions="Auto, *" ColumnDefinitions="260, *" Margin="16">
+    <TextBlock Grid.ColumnSpan="2" Text="SCUMM Editor (Avalonia)" FontSize="20" FontWeight="SemiBold" />
+    <Border Grid.Row="1" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
+      <StackPanel Spacing="8">
+        <TextBlock Foreground="#E6EDF3" FontWeight="SemiBold" Text="Resources" />
+        <TextBlock Foreground="#9BA4B0" Text="Placeholder navigation. Hook to core file tree." />
+        <Button x:Name="OpenButton" Content="Open File" Width="140" HorizontalAlignment="Left" />
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Background="#121826" CornerRadius="8" Padding="16">
+      <StackPanel Spacing="12">
+        <TextBlock Foreground="#E6EDF3" FontWeight="SemiBold" Text="Preview" />
+        <TextBlock Foreground="#9BA4B0" Text="Wire this pane to core logic (images, palettes, resources)." />
+        <TextBlock Foreground="#9BA4B0" Text="Core project now included for shared logic." />
+        <TextBlock x:Name="StatusText" Foreground="#E6EDF3" Text="No file loaded." />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
