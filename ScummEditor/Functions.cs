@@ -102,6 +102,23 @@ namespace ScummEditor
                 return result;
             }
 
+            // Monkey Island 1 floppy (LFL + LEC set, e.g., DISK01.LEC and 000.LFL/90x.LFL)
+            indexPath = Path.Combine(path, "000.LFL");
+            dataPath = Path.Combine(path, "DISK01.LEC");
+            if (File.Exists(indexPath) && File.Exists(dataPath))
+            {
+                result = new GameInfo
+                {
+                    LoadedGame = ScummGame.MonkeyIsland1VGA,
+                    IndexFile = indexPath,
+                    DataFile = dataPath,
+                    Xored = true,
+                    XorKey = 0x69,
+                    ScummVersion = 5
+                };
+                return result;
+            }
+
             indexPath = Path.Combine(path, "MONKEY.000");
             dataPath = Path.Combine(path, "MONKEY.001");
             if (File.Exists(indexPath) && File.Exists(dataPath))
