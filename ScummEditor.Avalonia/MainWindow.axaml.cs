@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 using System.Threading.Tasks;
 using ScummEditor;
+using ScummEditor.Core.Services;
 
 namespace ScummEditor.AvaloniaApp
 {
@@ -28,24 +30,31 @@ namespace ScummEditor.AvaloniaApp
 
     private async Task OnOpenFileAsync()
     {
-      var dialog = new OpenFileDialog
+      if (StorageProvider == null)
+      {
+        SetStatus("Storage provider unavailable.");
+        return;
+      }
+
+      var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
       {
         Title = "Open resource",
         AllowMultiple = false
-      };
+      });
 
-      var result = await dialog.ShowAsync(this);
-      if (result == null || result.Length == 0)
+      if (files == null || files.Count == 0)
       {
         SetStatus("No file selected.");
         return;
       }
 
-      var path = result[0];
+      var file = files[0];
+      var path = file.TryGetLocalPath() ?? file.Name;
 
+      var info = await FileInfoService.GetBasicInfoAsync(path);
       // Demonstrate using a Core type to keep linkage alive.
       var typeName = typeof(BitStreamManager).FullName;
-      SetStatus($"Loaded: {System.IO.Path.GetFileName(path)} (Core type: {typeName})");
+      SetStatus($"{info} (Core type: {typeName})");
     }
 
     private void SetStatus(string text)
