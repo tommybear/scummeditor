@@ -3,15 +3,18 @@
     xmlns:local="clr-namespace:ScummEditor.AvaloniaApp"
     x:Class="ScummEditor.AvaloniaApp.MainWindow"
     Title="SCUMM Editor (Avalonia preview)"
-    Width="1000" Height="700">
-  <Grid RowDefinitions="Auto, Auto, *" ColumnDefinitions="280, *" Margin="16">
-    <TextBlock Grid.ColumnSpan="2" Text="SCUMM Editor (Avalonia)" FontSize="22" FontWeight="SemiBold" />
-    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,4,0,8" Foreground="#9BA4B0" x:Name="StatusText" Text="No file loaded." />
+    Width="1100" Height="750">
+  <Grid RowDefinitions="Auto, Auto, *" ColumnDefinitions="280,6,*" Margin="16">
+    <TextBlock Grid.ColumnSpan="3" Text="SCUMM Editor (Avalonia)" FontSize="22" FontWeight="SemiBold" />
+    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,4,0,8" Foreground="#9BA4B0" x:Name="StatusText" Text="No file loaded." />
 
-    <Border Grid.Row="2" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
+    <Border Grid.Row="2" Grid.Column="0" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
       <DockPanel LastChildFill="True">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="8">
           <Button x:Name="OpenButton" Content="Open File" Width="120" />
+          <Button x:Name="SaveButton" Content="Save" Width="80" IsEnabled="False" />
+          <Button x:Name="ExportButton" Content="Export" Width="80" />
+          <Button x:Name="ImportButton" Content="Import" Width="80" />
           <TextBox x:Name="SearchBox" Width="150" Watermark="Filter..." />
           <Button x:Name="ClearSearchButton" Content="Clear" Width="70" />
         </StackPanel>
@@ -25,7 +28,9 @@
       </DockPanel>
     </Border>
 
-    <Border Grid.Row="2" Grid.Column="1" Margin="0,12,0,0" Background="#121826" CornerRadius="8" Padding="16">
+    <GridSplitter Grid.Row="2" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#1E2A3D" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+
+    <Border Grid.Row="2" Grid.Column="2" Margin="0,12,0,0" Background="#121826" CornerRadius="8" Padding="16">
       <StackPanel Spacing="12">
         <TextBlock Foreground="#E6EDF3" FontWeight="SemiBold" Text="Preview" />
         <TextBlock x:Name="DetailsHeader" Foreground="#9BA4B0" Text="Select a node to inspect" />

@@ -30,6 +30,9 @@ namespace ScummEditor.AvaloniaApp
     private readonly List<ResourceNode> _allNodes = new();
     private string _currentFilter = string.Empty;
     private TextBox? _searchBox;
+    private Button? _saveButton;
+    private ScummV6GameData? _currentGame;
+    private string? _currentPath;
 
     public MainWindow()
     {
@@ -49,6 +52,23 @@ namespace ScummEditor.AvaloniaApp
       if (this.FindControl<Button>("OpenButton") is { } openButton)
       {
         openButton.Click += async (_, __) => await OnOpenFileAsync();
+      }
+
+      _saveButton = this.FindControl<Button>("SaveButton");
+      if (_saveButton != null)
+      {
+        _saveButton.Click += async (_, __) => await OnSaveAsync();
+        _saveButton.IsEnabled = false;
+      }
+
+      if (this.FindControl<Button>("ExportButton") is { } exportButton)
+      {
+        exportButton.Click += (_, __) => ShowPlaceholder("Export", "Export not implemented yet in Avalonia. Use WinForms for now.");
+      }
+
+      if (this.FindControl<Button>("ImportButton") is { } importButton)
+      {
+        importButton.Click += (_, __) => ShowPlaceholder("Import", "Import not implemented yet in Avalonia. Use WinForms for now.");
       }
 
       _searchBox = this.FindControl<TextBox>("SearchBox");
@@ -120,6 +140,10 @@ namespace ScummEditor.AvaloniaApp
           return g;
         });
 
+        _currentGame = game;
+        _currentPath = path;
+        if (_saveButton != null) _saveButton.IsEnabled = true;
+
         BuildTree(game);
 
         var gameName = GetGameName(game.LoadedGameInfo?.LoadedGame ?? ScummGame.None);
@@ -128,6 +152,26 @@ namespace ScummEditor.AvaloniaApp
       catch (Exception ex)
       {
         SetStatus($"Failed to load: {ex.Message}");
+      }
+    }
+
+    private async Task OnSaveAsync()
+    {
+      if (_currentGame == null)
+      {
+        SetStatus("Nothing to save.");
+        return;
+      }
+
+      try
+      {
+        SetStatus("Saving...");
+        await Task.Run(() => _currentGame.SaveDataToDisk());
+        SetStatus("Save complete.");
+      }
+      catch (Exception ex)
+      {
+        SetStatus($"Save failed: {ex.Message}");
       }
     }
 
@@ -331,6 +375,13 @@ namespace ScummEditor.AvaloniaApp
       // Default inspector view.
       var defaultView = new DetailsListView { DataContext = this };
       SetContent(defaultView);
+    }
+
+    private void ShowPlaceholder(string title, string body)
+    {
+      var view = new PlaceholderView();
+      view.SetText(title, body);
+      SetContent(view);
     }
 
     private void SetContent(Control control)
