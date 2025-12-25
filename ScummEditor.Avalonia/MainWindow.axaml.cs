@@ -8,12 +8,14 @@ using Avalonia.Platform.Storage;
 using ScummEditor.Structures;
 using ScummEditor.Structures.DataFile;
 using ScummEditor.Structures.IndexFile;
+using System.Reflection;
 
 namespace ScummEditor.AvaloniaApp
 {
   public partial class MainWindow : Window
   {
     public ObservableCollection<ResourceNode> Nodes { get; } = new();
+    public ObservableCollection<DetailRow> Details { get; } = new();
 
     public MainWindow()
     {
@@ -148,17 +150,34 @@ namespace ScummEditor.AvaloniaApp
 
     private void SetDetails(ResourceNode node)
     {
-      if (this.FindControl<TextBlock>("DetailsText") is not { } details) return;
+      Details.Clear();
+
+      if (this.FindControl<TextBlock>("DetailsHeader") is { } header)
+      {
+        header.Text = node.Block == null ? node.Name : $"{node.Name} ({node.Block.BlockType})";
+      }
 
       if (node.Block == null)
       {
-        details.Text = node.Name;
+        Details.Add(new DetailRow("Info", node.Name));
         return;
       }
 
       var block = node.Block;
-      var info = $"Name: {node.Name}\nType: {block.BlockType}\nOffset: {block.BlockOffSet}\nSize: {block.BlockSize}\nChildren: {block.Childrens.Count}\nId: {block.UniqueId}";
-      details.Text = info;
+      Details.Add(new DetailRow("Type", block.BlockType));
+      Details.Add(new DetailRow("Offset", block.BlockOffSet.ToString()));
+      Details.Add(new DetailRow("Size", block.BlockSize.ToString()));
+      Details.Add(new DetailRow("Children", block.Childrens.Count.ToString()));
+      Details.Add(new DetailRow("Id", block.UniqueId));
+
+      foreach (var prop in block.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+      {
+        if (!prop.CanRead) continue;
+        if (InspectorHelpers.ShouldSkipProperty(prop.Name)) continue;
+        var val = prop.GetValue(block);
+        if (!InspectorHelpers.IsSimple(prop.PropertyType)) continue;
+        Details.Add(new DetailRow(prop.Name, val?.ToString() ?? string.Empty));
+      }
     }
 
     private static string GetGameName(ScummGame game)
@@ -188,5 +207,42 @@ namespace ScummEditor.AvaloniaApp
     public string Name { get; }
     public BlockBase? Block { get; }
     public ObservableCollection<ResourceNode> Children { get; }
+  }
+
+  public class DetailRow
+  {
+    public DetailRow(string name, string value)
+    {
+      Name = name;
+      Value = value;
+    }
+
+    public string Name { get; }
+    public string Value { get; }
+  }
+
+  internal static class InspectorHelpers
+  {
+    internal static bool IsSimple(Type type)
+    {
+      var underlying = Nullable.GetUnderlyingType(type) ?? type;
+      return underlying.IsPrimitive
+             || underlying.IsEnum
+             || underlying == typeof(string)
+             || underlying == typeof(decimal)
+             || underlying == typeof(DateTime)
+             || underlying == typeof(Guid)
+             || underlying == typeof(uint)
+             || underlying == typeof(long)
+             || underlying == typeof(ulong)
+             || underlying == typeof(short)
+             || underlying == typeof(ushort);
+    }
+
+    internal static bool ShouldSkipProperty(string name)
+    {
+      // Avoid echoing child collections or duplicate metadata; keep this list tight.
+      return name is "Childrens" or "Parent" or "UniqueId" or "BlockSize" or "BlockOffSet";
+    }
   }
 }
