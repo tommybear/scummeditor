@@ -4,33 +4,37 @@
     x:Class="ScummEditor.AvaloniaApp.MainWindow"
     Title="SCUMM Editor (Avalonia preview)"
     Width="1100" Height="750">
-  <Grid RowDefinitions="Auto, Auto, *" ColumnDefinitions="280,6,*" Margin="16">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto, Auto, Auto, Auto, *" ColumnDefinitions="280,6,*" Margin="16">
     <TextBlock Grid.ColumnSpan="3" Text="SCUMM Editor (Avalonia)" FontSize="22" FontWeight="SemiBold" />
-    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,4,0,8" Foreground="#9BA4B0" x:Name="StatusText" Text="No file loaded." />
+    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,4,0,2" Foreground="#9BA4B0" x:Name="StatusText" Text="No file loaded." />
 
-    <Border Grid.Row="2" Grid.Column="0" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
-      <DockPanel LastChildFill="True">
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="8">
-          <Button x:Name="OpenButton" Content="Open File" Width="120" />
-          <Button x:Name="SaveButton" Content="Save" Width="80" IsEnabled="False" />
-          <Button x:Name="ExportButton" Content="Export" Width="80" />
-          <Button x:Name="ImportButton" Content="Import" Width="80" />
-          <TextBox x:Name="SearchBox" Width="150" Watermark="Filter..." />
-          <Button x:Name="ClearSearchButton" Content="Clear" Width="70" />
-        </StackPanel>
-        <TreeView x:Name="ResourceTree" ItemsSource="{Binding Nodes}" Margin="0,8,0,0" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827">
-          <TreeView.DataTemplates>
-            <TreeDataTemplate DataType="local:ResourceNode" ItemsSource="{Binding Children}">
-              <TextBlock Text="{Binding Name}" Foreground="#E6EDF3" />
-            </TreeDataTemplate>
-          </TreeView.DataTemplates>
-        </TreeView>
-      </DockPanel>
+    <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8">
+      <Button x:Name="OpenButton" Content="Open File" Width="120" />
+      <Button x:Name="SaveButton" Content="Save" Width="80" IsEnabled="False" />
+      <Button x:Name="ExportButton" Content="Export" Width="80" />
+      <Button x:Name="ImportButton" Content="Import" Width="80" />
+      <TextBox x:Name="SearchBox" Width="150" Watermark="Filter..." />
+      <Button x:Name="ClearSearchButton" Content="Clear" Width="70" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Orientation="Vertical" Spacing="4">
+      <ProgressBar x:Name="BusyBar" IsIndeterminate="True" Height="6" IsVisible="False" />
+      <TextBlock x:Name="ErrorText" Foreground="#F87171" IsVisible="False" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="4" Grid.Column="0" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
+      <TreeView x:Name="ResourceTree" ItemsSource="{Binding Nodes}" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827">
+        <TreeView.DataTemplates>
+          <TreeDataTemplate DataType="local:ResourceNode" ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding Name}" Foreground="#E6EDF3" />
+          </TreeDataTemplate>
+        </TreeView.DataTemplates>
+      </TreeView>
     </Border>
 
-    <GridSplitter Grid.Row="2" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#1E2A3D" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+    <GridSplitter Grid.Row="4" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#1E2A3D" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
 
-    <Border Grid.Row="2" Grid.Column="2" Margin="0,12,0,0" Background="#121826" CornerRadius="8" Padding="16">
+    <Border Grid.Row="4" Grid.Column="2" Margin="0,12,0,0" Background="#121826" CornerRadius="8" Padding="16">
       <StackPanel Spacing="12">
         <TextBlock Foreground="#E6EDF3" FontWeight="SemiBold" Text="Preview" />
         <TextBlock x:Name="DetailsHeader" Foreground="#9BA4B0" Text="Select a node to inspect" />

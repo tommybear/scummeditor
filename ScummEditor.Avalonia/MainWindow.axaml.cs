@@ -6,14 +6,18 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
+using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using ScummEditor.AvaloniaApp.Views;
 using ScummEditor.Core;
 using ScummEditor.Encoders;
+using ScummEditor.Exceptions;
 using ScummEditor.Structures;
 using ScummEditor.Structures.DataFile;
 using ScummEditor.Structures.IndexFile;
@@ -31,13 +35,25 @@ namespace ScummEditor.AvaloniaApp
     private string _currentFilter = string.Empty;
     private TextBox? _searchBox;
     private Button? _saveButton;
+    private Button? _openButton;
+    private Button? _exportButton;
+    private Button? _importButton;
+    private Grid? _rootGrid;
+    private ProgressBar? _busyBar;
+    private TextBlock? _errorText;
+    private UserSettings _settings = new();
+    private readonly string _settingsPath;
     private ScummV6GameData? _currentGame;
     private string? _currentPath;
+    private bool _isBusy;
 
     public MainWindow()
     {
+      _settingsPath = BuildSettingsPath();
       InitializeComponent();
       DataContext = this;
+      CaptureLayoutControls();
+      LoadSettings();
       HookEvents();
       SetViewer(null);
     }
@@ -47,37 +63,55 @@ namespace ScummEditor.AvaloniaApp
       AvaloniaXamlLoader.Load(this);
     }
 
+    private void CaptureLayoutControls()
+    {
+      _openButton = this.FindControl<Button>("OpenButton");
+      _saveButton = this.FindControl<Button>("SaveButton");
+      _exportButton = this.FindControl<Button>("ExportButton");
+      _importButton = this.FindControl<Button>("ImportButton");
+      _searchBox = this.FindControl<TextBox>("SearchBox");
+      _rootGrid = this.FindControl<Grid>("RootGrid");
+      _busyBar = this.FindControl<ProgressBar>("BusyBar");
+      _errorText = this.FindControl<TextBlock>("ErrorText");
+    }
+
     private void HookEvents()
     {
-      if (this.FindControl<Button>("OpenButton") is { } openButton)
+      if (_openButton != null)
       {
-        openButton.Click += async (_, __) => await OnOpenFileAsync();
+        _openButton.Click += async (_, __) => await OnOpenFileAsync();
       }
 
-      _saveButton = this.FindControl<Button>("SaveButton");
       if (_saveButton != null)
       {
         _saveButton.Click += async (_, __) => await OnSaveAsync();
         _saveButton.IsEnabled = false;
       }
 
-      if (this.FindControl<Button>("ExportButton") is { } exportButton)
+      if (_exportButton != null)
       {
-        exportButton.Click += (_, __) => ShowPlaceholder("Export", "Export not implemented yet in Avalonia. Use WinForms for now.");
+        _exportButton.Click += async (_, __) => await OnExportAsync();
       }
 
-      if (this.FindControl<Button>("ImportButton") is { } importButton)
+      if (_importButton != null)
       {
-        importButton.Click += (_, __) => ShowPlaceholder("Import", "Import not implemented yet in Avalonia. Use WinForms for now.");
+        _importButton.Click += async (_, __) => await OnImportAsync();
       }
 
-      _searchBox = this.FindControl<TextBox>("SearchBox");
       if (_searchBox != null)
       {
         _searchBox.TextChanged += (_, __) =>
         {
           _currentFilter = _searchBox.Text ?? string.Empty;
           ApplyFilter();
+        };
+        _searchBox.KeyDown += (_, e) =>
+        {
+          if (e.Key == Key.Down)
+          {
+            FocusTreeFirstNode();
+            e.Handled = true;
+          }
         };
       }
 
@@ -98,6 +132,74 @@ namespace ScummEditor.AvaloniaApp
             SetDetails(node);
           }
         };
+      }
+    }
+
+    private string BuildSettingsPath()
+    {
+      var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ScummEditor");
+      Directory.CreateDirectory(folder);
+      return Path.Combine(folder, "avalonia-settings.json");
+    }
+
+    private void LoadSettings()
+    {
+      try
+      {
+        if (File.Exists(_settingsPath))
+        {
+          _settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(_settingsPath)) ?? new UserSettings();
+        }
+      }
+      catch
+      {
+        _settings = new UserSettings();
+      }
+
+      ApplySettings();
+    }
+
+    private void ApplySettings()
+    {
+      if (_rootGrid != null && _rootGrid.ColumnDefinitions.Count > 0 && _settings.LeftPaneWidth > 0)
+      {
+        _rootGrid.ColumnDefinitions[0].Width = new GridLength(_settings.LeftPaneWidth, GridUnitType.Pixel);
+      }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+      base.OnClosing(e);
+      SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+      try
+      {
+        if (_rootGrid != null && _rootGrid.ColumnDefinitions.Count > 0)
+        {
+          _settings.LeftPaneWidth = _rootGrid.ColumnDefinitions[0].ActualWidth;
+        }
+
+        var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(_settingsPath, json);
+      }
+      catch
+      {
+        // Ignore persistence errors; not critical for runtime.
+      }
+    }
+
+    private void FocusTreeFirstNode()
+    {
+      if (this.FindControl<TreeView>("ResourceTree") is { } tree)
+      {
+        tree.Focus();
+        if (tree.SelectedItem == null && Nodes.Count > 0)
+        {
+          tree.SelectedItem = Nodes[0];
+        }
       }
     }
 
@@ -123,8 +225,7 @@ namespace ScummEditor.AvaloniaApp
 
       var file = files[0];
       var path = file.TryGetLocalPath() ?? file.Name;
-
-      await LoadGameAsync(path);
+      await RunOperationAsync($"Loading {path}...", () => LoadGameAsync(path));
     }
 
     private async Task LoadGameAsync(string path)
@@ -143,6 +244,8 @@ namespace ScummEditor.AvaloniaApp
         _currentGame = game;
         _currentPath = path;
         if (_saveButton != null) _saveButton.IsEnabled = true;
+        if (_exportButton != null) _exportButton.IsEnabled = true;
+        if (_importButton != null) _importButton.IsEnabled = true;
 
         BuildTree(game);
 
@@ -162,17 +265,359 @@ namespace ScummEditor.AvaloniaApp
         SetStatus("Nothing to save.");
         return;
       }
-
-      try
+      if (await RunOperationAsync("Saving...", () => Task.Run(() => _currentGame.SaveDataToDisk())))
       {
-        SetStatus("Saving...");
-        await Task.Run(() => _currentGame.SaveDataToDisk());
         SetStatus("Save complete.");
       }
-      catch (Exception ex)
+    }
+
+    private async Task OnExportAsync()
+    {
+      if (_currentGame == null)
       {
-        SetStatus($"Save failed: {ex.Message}");
+        SetStatus("Open a file before exporting.");
+        return;
       }
+
+      if (StorageProvider == null)
+      {
+        SetStatus("Storage provider unavailable.");
+        return;
+      }
+
+      var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+      {
+        Title = "Select export folder",
+        AllowMultiple = false
+      });
+
+      if (folders == null || folders.Count == 0)
+      {
+        SetStatus("No folder selected.");
+        return;
+      }
+
+      var target = folders[0].TryGetLocalPath() ?? folders[0].Path.LocalPath;
+
+      if (await RunOperationAsync($"Exporting to {target}...", () => Task.Run(() => ExportResources(target))))
+      {
+        SetStatus($"Export complete → {target}");
+      }
+    }
+
+    private async Task OnImportAsync()
+    {
+      if (_currentGame == null)
+      {
+        SetStatus("Open a file before importing.");
+        return;
+      }
+
+      if (StorageProvider == null)
+      {
+        SetStatus("Storage provider unavailable.");
+        return;
+      }
+
+      var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+      {
+        Title = "Select import folder",
+        AllowMultiple = false
+      });
+
+      if (folders == null || folders.Count == 0)
+      {
+        SetStatus("No folder selected.");
+        return;
+      }
+
+      var source = folders[0].TryGetLocalPath() ?? folders[0].Path.LocalPath;
+
+      if (await RunOperationAsync($"Importing from {source}...", () => Task.Run(() => ImportResources(source))))
+      {
+        SetStatus($"Import complete → {source}");
+      }
+    }
+
+    private void ExportResources(string targetFolder)
+    {
+      if (_currentGame?.DataFile == null)
+      {
+        throw new InvalidOperationException("No game is loaded.");
+      }
+
+      Directory.CreateDirectory(targetFolder);
+
+      var diskBlocks = _currentGame.DataFile.GetLFLFs();
+
+      var decoder = new ImageDecoder { UseTransparentColor = true };
+      var bompDecoder = new BompImageDecoder { UseTransparentColor = true };
+      var costumeDecoder = new CostumeImageDecoder { UseTransparentColor = true };
+      var zplaneDecoder = new ZPlaneDecoder();
+      var convert = new ImageDepthConversor();
+
+      for (int i = 0; i < diskBlocks.Count; i++)
+      {
+        var currentRoom = (RoomBlock)diskBlocks[i].Childrens.Single(r => r is RoomBlock);
+
+        var background = decoder.Decode(currentRoom);
+        if (background != null)
+        {
+          using (background)
+          {
+            string backgroundName = Path.Combine(targetFolder, $"Room#{i}.png");
+            background.Save(backgroundName, ImageFormat.Png);
+            File.WriteAllText(backgroundName + ".idx", string.Join(";", decoder.UsedIndexes ?? new List<int>()));
+          }
+        }
+
+        var roomZPlanes = currentRoom.GetRMIM().GetIM00().GetZPlanes();
+        for (int j = 0; j < roomZPlanes.Count; j++)
+        {
+          var zplane = zplaneDecoder.Decode(currentRoom, j);
+          if (zplane != null)
+          {
+            using (zplane)
+            {
+              var zName = Path.Combine(targetFolder, $"Room#{i} ZP#{j}.png");
+              zplane.Save(zName, ImageFormat.Png);
+            }
+          }
+        }
+
+        var objects = currentRoom.GetOBIMs();
+        for (int objIndex = 0; objIndex < objects.Count; objIndex++)
+        {
+          var objectImage = objects[objIndex];
+          var images = objectImage.GetIMxx();
+          for (int imgIndex = 0; imgIndex < images.Count; imgIndex++)
+          {
+            DrawingBitmap? img = null;
+            int[] usedIndexes = Array.Empty<int>();
+
+            if (images[imgIndex].GetSMAP() == null)
+            {
+              img = bompDecoder.Decode(currentRoom, objIndex, imgIndex);
+              usedIndexes = bompDecoder.UsedIndexes.ToArray();
+            }
+            else
+            {
+              img = decoder.Decode(currentRoom, objIndex, imgIndex);
+              usedIndexes = decoder.UsedIndexes.ToArray();
+            }
+
+            if (img != null)
+            {
+              using (img)
+              {
+                var objectFilename = Path.Combine(targetFolder, $"Room#{i} Obj#{objIndex} Img#{imgIndex}.png");
+                img.Save(objectFilename, ImageFormat.Png);
+                File.WriteAllText(objectFilename + ".idx", string.Join(";", usedIndexes));
+              }
+            }
+
+            var zplanes = images[imgIndex].GetZPlanes();
+            for (int zp = 0; zp < zplanes.Count; zp++)
+            {
+              var objZ = zplaneDecoder.Decode(currentRoom, objIndex, imgIndex, zp);
+              if (objZ != null)
+              {
+                using (objZ)
+                {
+                  var zpName = Path.Combine(targetFolder, $"Room#{i} Obj#{objIndex} Img#{imgIndex} ZP#{zp}.png");
+                  objZ.Save(zpName, ImageFormat.Png);
+                }
+              }
+            }
+          }
+        }
+
+        var costumes = diskBlocks[i].Childrens.OfType<Costume>().ToList();
+        for (int costumeIndex = 0; costumeIndex < costumes.Count; costumeIndex++)
+        {
+          var costume = costumes[costumeIndex];
+          for (int frameIndex = 0; frameIndex < costume.Pictures.Count; frameIndex++)
+          {
+            if (costume.Pictures[frameIndex].ImageData.Length == 0 || costume.Pictures[frameIndex].ImageData.Length == 1 && costume.Pictures[frameIndex].ImageData[0] == 0)
+            {
+              continue;
+            }
+
+            using var costumeBmp = costumeDecoder.Decode(currentRoom, costume, frameIndex);
+            if (costumeBmp != null)
+            {
+              var c = new List<Color>();
+              for (int z = 0; z < 256; z++) c.Add(Color.Black);
+
+              PaletteData defaultPalette = currentRoom.GetDefaultPalette();
+              for (int z = 0; z < costume.Palette.Count; z++)
+              {
+                c[z] = defaultPalette.Colors[costume.Palette[z]];
+              }
+
+              var converted = convert.CopyToBpp(costumeBmp, 8, c.ToArray());
+              var costumeName = Path.Combine(targetFolder, $"Room#{i} Costume#{costumeIndex} FrameIndex#{frameIndex}.png");
+              converted.Save(costumeName, ImageFormat.Png);
+            }
+          }
+        }
+      }
+    }
+
+    private void ImportResources(string sourceFolder)
+    {
+      if (_currentGame?.DataFile == null)
+      {
+        throw new InvalidOperationException("No game is loaded.");
+      }
+
+      var files = Directory.GetFiles(sourceFolder, "*.png").Select(f => new AvaloniaImageInfo(f)).ToList();
+      var diskBlocks = _currentGame.DataFile.GetLFLFs();
+
+      var encoder = new ImageEncoder();
+      var bompEncoder = new BompImageEncoder();
+      var costumeEncoder = new CostumeImageEncoder();
+      var zplaneEncoder = new ZPlaneEncoder();
+
+      foreach (var file in files)
+      {
+        if (file.RoomIndex < 0 || file.RoomIndex >= diskBlocks.Count) continue;
+
+        var currentRoom = diskBlocks[file.RoomIndex].GetROOM();
+        using var bitmapToEncode = (DrawingBitmap)DrawingBitmap.FromFile(file.Filename);
+
+        var preferredIndexes = Array.Empty<int>();
+        var indexFile = file.Filename + ".idx";
+        if (File.Exists(indexFile))
+        {
+          preferredIndexes = File.ReadAllText(indexFile).Split(';', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray();
+        }
+
+        try
+        {
+          switch (file.ImageType)
+          {
+            case ImageType.Background:
+              encoder.PreferredIndexes = new List<int>(preferredIndexes);
+              encoder.Encode(currentRoom, bitmapToEncode);
+              break;
+            case ImageType.ZPlane:
+              if (file.ZPlaneIndex < 0) break;
+              zplaneEncoder.Encode(currentRoom, bitmapToEncode, file.ZPlaneIndex);
+              break;
+            case ImageType.Object:
+              if (file.ObjectIndex < 0 || file.ImageIndex < 0) break;
+              if (currentRoom.GetOBIMs()[file.ObjectIndex].GetIMxx()[file.ImageIndex].GetSMAP() == null)
+              {
+                bompEncoder.PreferredIndexes = new List<int>(preferredIndexes);
+                bompEncoder.Encode(currentRoom, file.ObjectIndex, file.ImageIndex, bitmapToEncode);
+              }
+              else
+              {
+                encoder.PreferredIndexes = new List<int>(preferredIndexes);
+                encoder.Encode(currentRoom, file.ObjectIndex, file.ImageIndex, bitmapToEncode);
+              }
+              break;
+            case ImageType.ObjectsZPlane:
+              if (file.ObjectIndex < 0 || file.ImageIndex < 0 || file.ZPlaneIndex < 0) break;
+              zplaneEncoder.Encode(currentRoom, file.ObjectIndex, file.ImageIndex, bitmapToEncode, file.ZPlaneIndex);
+              break;
+            case ImageType.Costume:
+              if (file.CostumeIndex < 0 || file.FrameIndex < 0) break;
+              var costume = diskBlocks[file.RoomIndex].GetCostumes()[file.CostumeIndex];
+              costumeEncoder.Encode(currentRoom, costume, file.FrameIndex, bitmapToEncode);
+              break;
+          }
+        }
+        catch (ImageEncodeException ex)
+        {
+          throw new InvalidOperationException($"Failed importing {file.Filename}: {ex.Message}", ex);
+        }
+      }
+
+      _currentGame.PostProcessChanges();
+    }
+
+    private sealed class AvaloniaImageInfo
+    {
+      public string Filename { get; }
+      public ImageType ImageType { get; private set; }
+      public int RoomIndex { get; private set; }
+      public int ZPlaneIndex { get; private set; }
+      public int ObjectIndex { get; private set; }
+      public int ImageIndex { get; private set; }
+      public int CostumeIndex { get; private set; }
+      public int FrameIndex { get; private set; }
+
+      public AvaloniaImageInfo(string filename)
+      {
+        Filename = filename;
+        RoomIndex = -1;
+        ZPlaneIndex = -1;
+        ObjectIndex = -1;
+        ImageIndex = -1;
+        CostumeIndex = -1;
+        FrameIndex = -1;
+        ImageType = ImageType.Unknown;
+
+        Parse();
+      }
+
+      private void Parse()
+      {
+        string[] fileParts = Filename.Split(' ');
+        foreach (var filePart in fileParts)
+        {
+          string pName = Path.GetFileNameWithoutExtension(filePart);
+          var pairValues = pName.Split('#');
+          switch (pairValues[0])
+          {
+            case "Room":
+              RoomIndex = int.Parse(pairValues[1]);
+              break;
+            case "Costume":
+              CostumeIndex = int.Parse(pairValues[1]);
+              break;
+            case "FrameIndex":
+              FrameIndex = int.Parse(pairValues[1]);
+              break;
+            case "Obj":
+              ObjectIndex = int.Parse(pairValues[1]);
+              break;
+            case "Img":
+              ImageIndex = int.Parse(pairValues[1]);
+              break;
+            case "ZP":
+              ZPlaneIndex = int.Parse(pairValues[1]);
+              break;
+          }
+        }
+
+        if (RoomIndex < 0) return;
+
+        if (CostumeIndex >= 0)
+        {
+          ImageType = ImageType.Costume;
+        }
+        else if (ObjectIndex >= 0)
+        {
+          ImageType = ZPlaneIndex >= 0 ? ImageType.ObjectsZPlane : ImageType.Object;
+        }
+        else
+        {
+          ImageType = ZPlaneIndex >= 0 ? ImageType.ZPlane : ImageType.Background;
+        }
+      }
+    }
+
+    private enum ImageType
+    {
+      Unknown = 0,
+      Background = 1,
+      ZPlane = 2,
+      Object = 3,
+      ObjectsZPlane = 4,
+      Costume = 5
     }
 
     private void BuildTree(ScummV6GameData game)
@@ -224,6 +669,62 @@ namespace ScummEditor.AvaloniaApp
     private void SetStatus(string text)
     {
       if (this.FindControl<TextBlock>("StatusText") is { } status) status.Text = text;
+    }
+
+    private async Task<bool> RunOperationAsync(string status, Func<Task> action)
+    {
+      SetBusy(true, status);
+      ClearError();
+      try
+      {
+        await action();
+        return true;
+      }
+      catch (Exception ex)
+      {
+        ShowError(ex.Message);
+        return false;
+      }
+      finally
+      {
+        SetBusy(false);
+      }
+    }
+
+    private void SetBusy(bool isBusy, string? status = null)
+    {
+      _isBusy = isBusy;
+      if (_busyBar != null) _busyBar.IsVisible = isBusy;
+
+      bool enable = !isBusy;
+      if (_openButton != null) _openButton.IsEnabled = enable;
+      if (_saveButton != null) _saveButton.IsEnabled = enable && _currentGame != null;
+      if (_exportButton != null) _exportButton.IsEnabled = enable && _currentGame != null;
+      if (_importButton != null) _importButton.IsEnabled = enable && _currentGame != null;
+
+      if (!string.IsNullOrWhiteSpace(status))
+      {
+        SetStatus(status);
+      }
+    }
+
+    private void ShowError(string message)
+    {
+      if (_errorText != null)
+      {
+        _errorText.Text = message;
+        _errorText.IsVisible = true;
+      }
+      SetStatus(message);
+    }
+
+    private void ClearError()
+    {
+      if (_errorText != null)
+      {
+        _errorText.Text = string.Empty;
+        _errorText.IsVisible = false;
+      }
     }
 
     private void SetDetails(ResourceNode node)
@@ -293,88 +794,81 @@ namespace ScummEditor.AvaloniaApp
 
     private void SetViewer(BlockBase? block)
     {
-      // Palette view
+      Control? preview = null;
+      Control? hex = null;
+
+      if (block == null)
+      {
+        SetContent(new DetailsListView { DataContext = this });
+        return;
+      }
+
       if (block is PaletteData palette)
       {
         var view = new PaletteView();
         view.Load(palette);
-        SetContent(view);
-        return;
+        preview = view;
       }
-
-      // Room headers
-      if (block is RoomHeader)
+      else if (block is RoomHeader)
       {
-        SetContent(new RoomHeaderView { DataContext = block });
-        return;
+        preview = new RoomHeaderView { DataContext = block };
       }
-
-      if (block is RoomImageHeader)
+      else if (block is RoomImageHeader)
       {
-        SetContent(new RoomImageHeaderView { DataContext = block });
-        return;
+        preview = new RoomImageHeaderView { DataContext = block };
       }
-
-      if (block is DirectoryOfItems directory)
+      else if (block is DirectoryOfItems directory)
       {
         var view = new DirectoryTableView();
         view.Load(directory);
-        SetContent(view);
-        return;
+        preview = view;
       }
-
-      // Images (BOMP)
-      if (block is ImageBomp bomp)
+      else if (block is ImageBomp bomp)
       {
-        var view = TryCreateBompView(bomp);
-        if (view != null)
-        {
-          SetContent(view);
-          return;
-        }
+        preview = TryCreateBompView(bomp);
+        hex ??= TryHexFallback(block);
       }
-
-      // Z-planes
-      if (block is ZPlane zPlane)
+      else if (block is ImageStripTable || block is ImageData)
       {
-        var view = TryCreateZPlaneView(zPlane);
-        if (view != null)
-        {
-          SetContent(view);
-          return;
-        }
+        preview = TryCreateSmapView(block);
+        hex ??= TryHexFallback(block);
       }
-
-      // Costumes placeholder
-      if (block is Costume costume)
+      else if (block is ZPlane zPlane)
+      {
+        preview = TryCreateZPlaneView(zPlane);
+        hex ??= TryHexFallback(block);
+      }
+      else if (block is Costume costume)
       {
         var placeholder = new PlaceholderView();
         placeholder.SetText("Costume", $"Animations: {costume.NumAnim}, Palette entries: {costume.Palette?.Count ?? 0}, Limbs: {costume.Limbs?.Count ?? 0}");
-        SetContent(placeholder);
-        return;
+        preview = placeholder;
       }
-
-      // Scripts / sounds placeholder by block type names
-      if (block != null && (block.BlockType == "SCRP" || block.BlockType == "SOUN"))
+      else if (block.BlockType == "SCRP" || block.BlockType == "SOUN")
       {
         var placeholder = new PlaceholderView();
-        placeholder.SetText(block.BlockType, "Preview not implemented yet. Showing hex fallback if available.");
-        var hex = TryHexFallback(block);
-        SetContent(hex ?? placeholder);
-        return;
+        placeholder.SetText(block.BlockType, "Preview not implemented yet. Use the Hex tab to inspect raw bytes.");
+        preview = placeholder;
+        hex ??= TryHexFallback(block);
       }
 
-      // Not implemented blocks -> hex
-      var hexView = TryHexFallback(block);
-      if (hexView != null)
+      hex ??= TryHexFallback(block);
+
+      if (preview != null)
       {
-        SetContent(hexView);
+        SetContent(preview, hex);
         return;
       }
 
-      // Default inspector view.
-      var defaultView = new DetailsListView { DataContext = this };
-      SetContent(defaultView);
+      if (hex != null)
+      {
+        var placeholder = new PlaceholderView();
+        placeholder.SetText(block.BlockType, "Preview not implemented yet.");
+        SetContent(placeholder, hex);
+        return;
+      }
+
+      SetContent(new DetailsListView { DataContext = this });
     }
 
     private void ShowPlaceholder(string title, string body)
@@ -384,11 +878,26 @@ namespace ScummEditor.AvaloniaApp
       SetContent(view);
     }
 
-    private void SetContent(Control control)
+    private void SetContent(Control control, Control? hex = null)
     {
       if (this.FindControl<ContentControl>("ViewerHost") is { } host)
       {
-        host.Content = control;
+        if (hex == null)
+        {
+          host.Content = control;
+        }
+        else
+        {
+          host.Content = new TabControl
+          {
+            SelectedIndex = 0,
+            ItemsSource = new object[]
+            {
+              new TabItem { Header = "Preview", Content = control },
+              new TabItem { Header = "Hex", Content = hex }
+            }
+          };
+        }
       }
     }
 
@@ -416,6 +925,44 @@ namespace ScummEditor.AvaloniaApp
       catch
       {
         return TryHexFallback(bomp);
+      }
+    }
+
+    private Control? TryCreateSmapView(BlockBase block)
+    {
+      var imageData = block as ImageData ?? block.FindAncestor<ImageData>();
+      var room = block.FindAncestor<RoomBlock>();
+      if (room == null || imageData == null) return TryHexFallback(block);
+
+      try
+      {
+        var decoder = new ImageDecoder();
+        DrawingBitmap bmp;
+
+        var objectImage = block.FindAncestor<ObjectImage>();
+        if (objectImage != null)
+        {
+          var objIndex = room.GetOBIMs().IndexOf(objectImage);
+          var imgIndex = objectImage.GetIMxx().IndexOf(imageData);
+          if (objIndex < 0 || imgIndex < 0) return TryHexFallback(block);
+          bmp = decoder.Decode(room, objIndex, imgIndex);
+        }
+        else
+        {
+          bmp = decoder.Decode(room);
+        }
+
+        using (bmp)
+        {
+          var avaloniaBmp = ConvertToAvaloniaBitmap(bmp);
+          var view = new ImageBitmapView();
+          view.SetBitmap(avaloniaBmp);
+          return view;
+        }
+      }
+      catch
+      {
+        return TryHexFallback(block);
       }
     }
 
@@ -591,5 +1138,10 @@ namespace ScummEditor.AvaloniaApp
       // Avoid echoing child collections or duplicate metadata; keep this list tight.
       return name is "Childrens" or "Parent" or "UniqueId" or "BlockSize" or "BlockOffSet";
     }
+  }
+
+  internal sealed class UserSettings
+  {
+    public double LeftPaneWidth { get; set; } = 280;
   }
 }
