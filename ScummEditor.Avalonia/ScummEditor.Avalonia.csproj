@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Windows.Extensions" Version="8.0.0" />
     <ProjectReference Include="..\ScummEditor.Core\ScummEditor.Core.csproj" />
   </ItemGroup>
 </Project>
