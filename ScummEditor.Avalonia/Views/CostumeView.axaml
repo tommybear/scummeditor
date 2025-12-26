@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="ScummEditor.AvaloniaApp.Views.CostumeView"
              Padding="12">
-  <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="260,*">
+  <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="320,*">
     <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
       <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" Foreground="#E6EDF3" />
       <TextBlock x:Name="DetailText" FontSize="12" Foreground="#B5BAC1" />
@@ -13,21 +13,85 @@
       <CheckBox x:Name="TransparentCheck" Content="Transparent color" IsChecked="True" Checked="OnTransparencyChanged" Unchecked="OnTransparencyChanged" />
     </StackPanel>
 
-    <ListBox x:Name="FramesList"
-             Grid.Row="2"
-             Grid.Column="0"
-             SelectionChanged="OnFrameSelectionChanged"
-             HorizontalAlignment="Stretch"
-             VerticalAlignment="Stretch">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <StackPanel Spacing="2" Margin="0 2">
-            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding Meta}" FontSize="10" Foreground="#9BA3AE" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <TabControl Grid.Row="2" Grid.Column="0">
+      <TabItem Header="Frames">
+        <ListBox x:Name="FramesList" SelectionChanged="OnFrameSelectionChanged">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="2" Margin="0 2">
+                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Meta}" FontSize="10" Foreground="#9BA3AE" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="Animations">
+        <ListBox x:Name="AnimationsList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="2" Margin="0 4">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Details}" FontSize="10" Foreground="#9BA3AE" TextWrapping="Wrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="Commands">
+        <ListBox x:Name="CommandsList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="2" Margin="0 2">
+                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Meaning}" FontSize="10" Foreground="#9BA3AE" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="Limbs">
+        <ListBox x:Name="LimbsList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="2" Margin="0 4">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Details}" FontSize="10" Foreground="#9BA3AE" />
+                <ItemsControl Items="{Binding Images}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" FontSize="10" Foreground="#9BA3AE" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="Palette">
+        <ListBox x:Name="PaletteList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel Margin="0 2" LastChildFill="False">
+                <Border Width="36" Height="18" CornerRadius="3" Background="{Binding Brush}" Margin="0 0 8 0" />
+                <StackPanel Orientation="Vertical" Margin="0 0 8 0">
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ColorText}" FontSize="10" Foreground="#9BA3AE" />
+                </StackPanel>
+                <ComboBox Width="80" SelectedItem="{Binding SelectedIndex}" SelectionChanged="OnPaletteEntryChanged">
+                  <ComboBox.Items>
+                    <x:Array Type="x:Int32">
+                      <!-- filled in code-behind -->
+                    </x:Array>
+                  </ComboBox.Items>
+                </ComboBox>
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+    </TabControl>
 
     <Border Grid.Row="2" Grid.Column="1" Background="#1E1E1E" BorderBrush="#2A2F37" BorderThickness="1" CornerRadius="4" Padding="8">
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
