@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Buffers.Binary;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -1029,23 +1030,20 @@ namespace ScummEditor.AvaloniaApp
       if (block is not NotImplementedDataBlock notImpl || notImpl.Contents == null) return null;
 
       var room = block.FindAncestor<RoomBlock>();
+      var scaleSlots = room != null ? TryLoadScaleSlots(room) : new List<ScaleSlot>();
+      int? boxCount = TryPeekBoxCount(room);
 
       if (block.BlockType == "BOXD" && room != null)
       {
         try
         {
-          var decoder = new ImageDecoder();
-          var bmp = decoder.Decode(room);
-          if (bmp != null)
+          var boxes = WalkBoxParser.ParseBoxd(notImpl.Contents, scaleSlots);
+          var rendered = RenderBoxOverlay(room, boxes, scaleSlots);
+          if (rendered != null)
           {
-            using (bmp)
-            {
-              var avaloniaBmp = ConvertToAvaloniaBitmap(bmp);
-              var boxes = ParseBoxes(notImpl.Contents);
-              var overlay = new BoxOverlayView();
-              overlay.Load(avaloniaBmp, boxes);
-              return overlay;
-            }
+            var view = new ImageBitmapView();
+            view.SetBitmap(rendered);
+            return view;
           }
         }
         catch
@@ -1054,47 +1052,113 @@ namespace ScummEditor.AvaloniaApp
         }
       }
 
-      var view = new BoxDataView();
+      var dataView = new BoxDataView();
       if (block.BlockType == "BOXD")
       {
-        view.LoadBoxd(notImpl.Contents);
+        dataView.LoadBoxd(notImpl.Contents, scaleSlots);
       }
       else
       {
-        view.LoadBoxm(notImpl.Contents);
+        dataView.LoadBoxm(notImpl.Contents, boxCount);
       }
-      return view;
+      return dataView;
     }
 
-    private static List<BoxRect> ParseBoxes(byte[] data)
+    private static List<ScaleSlot> TryLoadScaleSlots(RoomBlock? room)
     {
-      var list = new List<BoxRect>();
-      int count = data.Length / 8;
-      for (int i = 0; i < count; i++)
+      if (room == null) return new List<ScaleSlot>();
+
+      var scalBlock = room.Childrens.OfType<NotImplementedDataBlock>().FirstOrDefault(b => b.BlockType == "SCAL");
+      if (scalBlock?.Contents == null) return new List<ScaleSlot>();
+
+      return WalkBoxParser.ParseScal(scalBlock.Contents);
+    }
+
+    private static int? TryPeekBoxCount(RoomBlock? room)
+    {
+      if (room == null) return null;
+      var boxdBlock = room.Childrens.OfType<NotImplementedDataBlock>().FirstOrDefault(b => b.BlockType == "BOXD");
+      if (boxdBlock?.Contents == null) return null;
+      var count = WalkBoxParser.PeekBoxCount(boxdBlock.Contents);
+      return count > 0 ? count : null;
+    }
+
+    private static AvaloniaBitmap? RenderBoxOverlay(RoomBlock room, List<WalkBox> boxes, IReadOnlyList<ScaleSlot> scaleSlots)
+    {
+      try
       {
-        short x1 = ReadInt16(data, i * 8 + 0);
-        short y1 = ReadInt16(data, i * 8 + 2);
-        short x2 = ReadInt16(data, i * 8 + 4);
-        short y2 = ReadInt16(data, i * 8 + 6);
-        if (x1 <= -32000 || y1 <= -32000 || x2 <= -32000 || y2 <= -32000)
+        var decoder = new ImageDecoder();
+        using var bg = decoder.Decode(room);
+        if (bg == null) return null;
+
+        using var canvas = new DrawingBitmap(bg.Width, bg.Height);
+        using (var g = Graphics.FromImage(canvas))
         {
-          continue; // skip sentinel entries
+          g.DrawImage(bg, Point.Empty);
+          int slotCount = scaleSlots.Count;
+          foreach (var box in boxes)
+          {
+            if (box.Points.Count < 3) continue;
+            var pts = box.Points.Select(p => new PointF(p.X, p.Y)).ToArray();
+            var color = GetSlotColor(box, slotCount);
+            using var pen = new Pen(color, 1);
+            using var brush = new SolidBrush(Color.FromArgb(40, color.R, color.G, color.B));
+            g.FillPolygon(brush, pts);
+            g.DrawPolygon(pen, pts);
+
+            var center = box.GetCentroid();
+            var label = box.UsesScaleSlot ? $"{box.Index} s{box.ScaleSlot}" : $"{box.Index} {box.FixedScale}%";
+            using var fontFamily = new FontFamily("Arial");
+            using var font = new Font(fontFamily, 10, System.Drawing.FontStyle.Bold);
+            using var textBrush = new SolidBrush(Color.White);
+            g.DrawString(label, font, textBrush, new PointF((float)center.X - 10, (float)center.Y - 8));
+          }
         }
 
-        var x = Math.Min(x1, x2);
-        var y = Math.Min(y1, y2);
-        var width = Math.Abs(x2 - x1) + 1;
-        var height = Math.Abs(y2 - y1) + 1;
-        if (width <= 0 || height <= 0) continue;
-        list.Add(new BoxRect(x, y, width, height));
+        return ConvertToAvaloniaBitmap(canvas);
       }
-      return list;
+      catch
+      {
+        return null;
+      }
     }
 
-    private static short ReadInt16(byte[] data, int offset)
+    private static Color GetSlotColor(WalkBox box, int slotCount)
     {
-      if (offset + 1 >= data.Length) return 0;
-      return (short)(data[offset] | (data[offset + 1] << 8));
+      if (!box.UsesScaleSlot)
+      {
+        return Color.Lime;
+      }
+
+      if (slotCount <= 0)
+      {
+        return Color.DeepSkyBlue;
+      }
+
+      int slot = Math.Max(0, box.ScaleSlot);
+      double hue = (slot * 137.508) % 360.0;
+      return ColorFromHsv(hue, 0.85, 0.9);
+    }
+
+    private static Color ColorFromHsv(double h, double s, double v)
+    {
+      h = h % 360;
+      double c = v * s;
+      double x = c * (1 - Math.Abs((h / 60 % 2) - 1));
+      double m = v - c;
+
+      double r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+
+      byte R = (byte)Math.Clamp((r + m) * 255, 0, 255);
+      byte G = (byte)Math.Clamp((g + m) * 255, 0, 255);
+      byte B = (byte)Math.Clamp((b + m) * 255, 0, 255);
+      return Color.FromArgb(255, R, G, B);
     }
 
     private Control? TryCreateZPlaneView(ZPlane zPlane)

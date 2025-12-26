@@ -7,18 +7,7 @@
     <ItemsControl x:Name="BoxList" IsVisible="False" ItemsSource="{Binding Boxes}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Foreground="#9BA4B0" Text="Box" />
-            <TextBlock Foreground="#E6EDF3" Text="{Binding Index}" />
-            <TextBlock Foreground="#9BA4B0" Text="X1" />
-            <TextBlock Foreground="#E6EDF3" Text="{Binding X1}" />
-            <TextBlock Foreground="#9BA4B0" Text="Y1" />
-            <TextBlock Foreground="#E6EDF3" Text="{Binding Y1}" />
-            <TextBlock Foreground="#9BA4B0" Text="X2" />
-            <TextBlock Foreground="#E6EDF3" Text="{Binding X2}" />
-            <TextBlock Foreground="#9BA4B0" Text="Y2" />
-            <TextBlock Foreground="#E6EDF3" Text="{Binding Y2}" />
-          </StackPanel>
+          <TextBlock Foreground="#E6EDF3" FontFamily="Consolas" Text="{Binding Summary}" />
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
