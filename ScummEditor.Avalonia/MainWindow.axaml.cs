@@ -903,6 +903,13 @@ namespace ScummEditor.AvaloniaApp
         preview = placeholder;
         hex ??= TryHexFallback(block);
       }
+      else if (block.BlockType == "BOXD" || block.BlockType == "BOXM")
+      {
+        var placeholder = new PlaceholderView();
+        placeholder.SetText(block.BlockType, "Box data viewer not yet decoded. Use the Hex tab to inspect raw bytes.");
+        preview = placeholder;
+        hex ??= TryHexFallback(block);
+      }
 
       hex ??= TryHexFallback(block);
 
