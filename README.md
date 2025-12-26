@@ -18,6 +18,12 @@ This tool supports the extraction and injection of the following images:
 
 As far as I know this is the only existing tool that allows you change the costumes on scumm games.
 
+## Recent updates (Avalonia UI)
+- Added BOXD overlays rendered to bitmap with slot-colored polygons and labels (matching live overlay styling).
+- Added a full costume viewer: frame list, palette selector, transparency toggle, animations/commands/limbs inspection, and per-entry palette mapping with a quick apply-to-all control.
+- Added basic sound viewer: WAV detection and VOC→WAV decode for 8-bit mono PCM “talkie” assets (playback on Windows), plus raw export.
+- BOXD/SCRP/SOUN now default to hex view when no richer preview is available.
+
 ## Thanks
 I would like to say thank you to Jestar Jokin (http://www.jestarjokin.net/blog/category/scumm/) for his great help and for being so nice with me, providing his source codes and pointing me to links where I could learn a lot about the scumm data and image formats. Without his help, this program never existed.
 
