@@ -68,11 +68,11 @@ namespace ScummEditor.AvaloniaApp.Views
             {
               Text = BuildLabel(box),
               Foreground = Brushes.White,
-              FontSize = 12,
+              FontSize = 8,
               FontWeight = FontWeight.Bold
             };
-            Canvas.SetLeft(label, centroid.X - 10);
-            Canvas.SetTop(label, centroid.Y - 8);
+            Canvas.SetLeft(label, centroid.X - 6);
+            Canvas.SetTop(label, centroid.Y - 5);
             _overlay.Children.Add(label);
           }
         }

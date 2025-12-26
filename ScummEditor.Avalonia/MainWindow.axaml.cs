@@ -1109,9 +1109,9 @@ namespace ScummEditor.AvaloniaApp
             var center = box.GetCentroid();
             var label = box.UsesScaleSlot ? $"{box.Index} s{box.ScaleSlot}" : $"{box.Index} {box.FixedScale}%";
             using var fontFamily = new FontFamily("Arial");
-            using var font = new Font(fontFamily, 10, System.Drawing.FontStyle.Bold);
+            using var font = new Font(fontFamily, 8, System.Drawing.FontStyle.Bold);
             using var textBrush = new SolidBrush(Color.White);
-            g.DrawString(label, font, textBrush, new PointF((float)center.X - 10, (float)center.Y - 8));
+            g.DrawString(label, font, textBrush, new PointF((float)center.X - 6, (float)center.Y - 5));
           }
         }
 
