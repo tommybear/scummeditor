@@ -905,9 +905,8 @@ namespace ScummEditor.AvaloniaApp
       }
       else if (block.BlockType == "BOXD" || block.BlockType == "BOXM")
       {
-        var placeholder = new PlaceholderView();
-        placeholder.SetText(block.BlockType, "Box data viewer not yet decoded. Use the Hex tab to inspect raw bytes.");
-        preview = placeholder;
+        var view = TryCreateBoxView(block);
+        preview = view;
         hex ??= TryHexFallback(block);
       }
 
@@ -1023,6 +1022,79 @@ namespace ScummEditor.AvaloniaApp
       {
         return TryHexFallback(block);
       }
+    }
+
+    private Control? TryCreateBoxView(BlockBase block)
+    {
+      if (block is not NotImplementedDataBlock notImpl || notImpl.Contents == null) return null;
+
+      var room = block.FindAncestor<RoomBlock>();
+
+      if (block.BlockType == "BOXD" && room != null)
+      {
+        try
+        {
+          var decoder = new ImageDecoder();
+          var bmp = decoder.Decode(room);
+          if (bmp != null)
+          {
+            using (bmp)
+            {
+              var avaloniaBmp = ConvertToAvaloniaBitmap(bmp);
+              var boxes = ParseBoxes(notImpl.Contents);
+              var overlay = new BoxOverlayView();
+              overlay.Load(avaloniaBmp, boxes);
+              return overlay;
+            }
+          }
+        }
+        catch
+        {
+          // fall back to table view below
+        }
+      }
+
+      var view = new BoxDataView();
+      if (block.BlockType == "BOXD")
+      {
+        view.LoadBoxd(notImpl.Contents);
+      }
+      else
+      {
+        view.LoadBoxm(notImpl.Contents);
+      }
+      return view;
+    }
+
+    private static List<BoxRect> ParseBoxes(byte[] data)
+    {
+      var list = new List<BoxRect>();
+      int count = data.Length / 8;
+      for (int i = 0; i < count; i++)
+      {
+        short x1 = ReadInt16(data, i * 8 + 0);
+        short y1 = ReadInt16(data, i * 8 + 2);
+        short x2 = ReadInt16(data, i * 8 + 4);
+        short y2 = ReadInt16(data, i * 8 + 6);
+        if (x1 <= -32000 || y1 <= -32000 || x2 <= -32000 || y2 <= -32000)
+        {
+          continue; // skip sentinel entries
+        }
+
+        var x = Math.Min(x1, x2);
+        var y = Math.Min(y1, y2);
+        var width = Math.Abs(x2 - x1) + 1;
+        var height = Math.Abs(y2 - y1) + 1;
+        if (width <= 0 || height <= 0) continue;
+        list.Add(new BoxRect(x, y, width, height));
+      }
+      return list;
+    }
+
+    private static short ReadInt16(byte[] data, int offset)
+    {
+      if (offset + 1 >= data.Length) return 0;
+      return (short)(data[offset] | (data[offset + 1] << 8));
     }
 
     private Control? TryCreateZPlaneView(ZPlane zPlane)

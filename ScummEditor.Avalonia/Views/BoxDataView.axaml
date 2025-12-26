@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.BoxDataView">
+  <StackPanel Spacing="8">
+    <TextBlock x:Name="Header" Foreground="#E6EDF3" FontWeight="SemiBold" />
+
+    <ItemsControl x:Name="BoxList" IsVisible="False" ItemsSource="{Binding Boxes}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Foreground="#9BA4B0" Text="Box" />
+            <TextBlock Foreground="#E6EDF3" Text="{Binding Index}" />
+            <TextBlock Foreground="#9BA4B0" Text="X1" />
+            <TextBlock Foreground="#E6EDF3" Text="{Binding X1}" />
+            <TextBlock Foreground="#9BA4B0" Text="Y1" />
+            <TextBlock Foreground="#E6EDF3" Text="{Binding Y1}" />
+            <TextBlock Foreground="#9BA4B0" Text="X2" />
+            <TextBlock Foreground="#E6EDF3" Text="{Binding X2}" />
+            <TextBlock Foreground="#9BA4B0" Text="Y2" />
+            <TextBlock Foreground="#E6EDF3" Text="{Binding Y2}" />
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <ItemsControl x:Name="MatrixList" IsVisible="False" ItemsSource="{Binding Matrix}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <TextBlock Foreground="#E6EDF3" FontFamily="Consolas" Text="{Binding Row}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock x:Name="Meta" Foreground="#9BA4B0" />
+  </StackPanel>
+</UserControl>

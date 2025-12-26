@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.BoxOverlayView">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <Grid>
+      <Image x:Name="BackgroundImage" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+      <Canvas x:Name="Overlay" IsHitTestVisible="False" />
+    </Grid>
+  </ScrollViewer>
+</UserControl>
