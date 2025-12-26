@@ -23,13 +23,23 @@
     </StackPanel>
 
     <Border Grid.Row="4" Grid.Column="0" Margin="0,12,12,0" Background="#0F1A2B" CornerRadius="8" Padding="12">
-      <TreeView x:Name="ResourceTree" ItemsSource="{Binding Nodes}" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827">
-        <TreeView.DataTemplates>
-          <TreeDataTemplate DataType="local:ResourceNode" ItemsSource="{Binding Children}">
-            <TextBlock Text="{Binding Name}" Foreground="#E6EDF3" />
-          </TreeDataTemplate>
-        </TreeView.DataTemplates>
-      </TreeView>
+      <Grid>
+        <TreeView x:Name="ResourceTree" ItemsSource="{Binding Nodes}" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827">
+          <TreeView.DataTemplates>
+            <TreeDataTemplate DataType="local:ResourceNode" ItemsSource="{Binding Children}">
+              <TextBlock Text="{Binding Name}" Foreground="#E6EDF3" />
+            </TreeDataTemplate>
+          </TreeView.DataTemplates>
+        </TreeView>
+
+        <ListBox x:Name="FilterList" ItemsSource="{Binding FlatNodes}" BorderBrush="#1E2A3D" BorderThickness="1" Background="#111827" IsVisible="False">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" Foreground="#E6EDF3" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
     </Border>
 
     <GridSplitter Grid.Row="4" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#1E2A3D" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />

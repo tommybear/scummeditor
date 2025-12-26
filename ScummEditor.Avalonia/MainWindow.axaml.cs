@@ -29,6 +29,7 @@ namespace ScummEditor.AvaloniaApp
   public partial class MainWindow : Window
   {
     public ObservableCollection<ResourceNode> Nodes { get; } = new();
+    public ObservableCollection<ResourceNode> FlatNodes { get; } = new();
     public ObservableCollection<DetailRow> Details { get; } = new();
 
     private readonly List<ResourceNode> _allNodes = new();
@@ -41,6 +42,8 @@ namespace ScummEditor.AvaloniaApp
     private Grid? _rootGrid;
     private ProgressBar? _busyBar;
     private TextBlock? _errorText;
+    private TreeView? _treeView;
+    private ListBox? _filterList;
     private UserSettings _settings = new();
     private readonly string _settingsPath;
     private ScummV6GameData? _currentGame;
@@ -73,6 +76,8 @@ namespace ScummEditor.AvaloniaApp
       _rootGrid = this.FindControl<Grid>("RootGrid");
       _busyBar = this.FindControl<ProgressBar>("BusyBar");
       _errorText = this.FindControl<TextBlock>("ErrorText");
+      _treeView = this.FindControl<TreeView>("ResourceTree");
+      _filterList = this.FindControl<ListBox>("FilterList");
     }
 
     private void HookEvents()
@@ -128,6 +133,17 @@ namespace ScummEditor.AvaloniaApp
         tree.SelectionChanged += (_, __) =>
         {
           if (tree.SelectedItem is ResourceNode node)
+          {
+            SetDetails(node);
+          }
+        };
+      }
+
+      if (_filterList != null)
+      {
+        _filterList.SelectionChanged += (_, __) =>
+        {
+          if (_filterList.SelectedItem is ResourceNode node)
           {
             SetDetails(node);
           }
@@ -764,12 +780,26 @@ namespace ScummEditor.AvaloniaApp
 
     private void ApplyFilter()
     {
+      bool hasFilter = !string.IsNullOrWhiteSpace(_currentFilter);
       Nodes.Clear();
+      FlatNodes.Clear();
 
-      foreach (var node in FilterNodes(_allNodes, _currentFilter))
+      if (hasFilter)
       {
-        Nodes.Add(node);
+        foreach (var node in FlattenMatches(_allNodes, _currentFilter))
+        {
+          FlatNodes.Add(node);
+        }
       }
+      else
+      {
+        foreach (var node in FilterNodes(_allNodes, _currentFilter))
+        {
+          Nodes.Add(node);
+        }
+      }
+
+      UpdateListVisibility(hasFilter);
     }
 
     private static IEnumerable<ResourceNode> FilterNodes(IEnumerable<ResourceNode> source, string filter)
@@ -790,6 +820,28 @@ namespace ScummEditor.AvaloniaApp
           yield return clone;
         }
       }
+    }
+
+    private static IEnumerable<ResourceNode> FlattenMatches(IEnumerable<ResourceNode> source, string filter)
+    {
+      foreach (var node in source)
+      {
+        if (node.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+        {
+          yield return node;
+        }
+
+        foreach (var child in FlattenMatches(node.Children, filter))
+        {
+          yield return child;
+        }
+      }
+    }
+
+    private void UpdateListVisibility(bool isFiltering)
+    {
+      if (_treeView != null) _treeView.IsVisible = !isFiltering;
+      if (_filterList != null) _filterList.IsVisible = isFiltering;
     }
 
     private void SetViewer(BlockBase? block)
