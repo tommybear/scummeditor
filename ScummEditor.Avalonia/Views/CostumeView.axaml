@@ -57,7 +57,7 @@
               <StackPanel Spacing="2" Margin="0 4">
                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
                 <TextBlock Text="{Binding Details}" FontSize="10" Foreground="#9BA3AE" />
-                <ItemsControl Items="{Binding Images}">
+                <ItemsControl ItemsSource="{Binding Images}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding}" FontSize="10" Foreground="#9BA3AE" />
@@ -79,13 +79,10 @@
                   <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding ColorText}" FontSize="10" Foreground="#9BA3AE" />
                 </StackPanel>
-                <ComboBox Width="80" SelectedItem="{Binding SelectedIndex}" SelectionChanged="OnPaletteEntryChanged">
-                  <ComboBox.Items>
-                    <x:Array Type="x:Int32">
-                      <!-- filled in code-behind -->
-                    </x:Array>
-                  </ComboBox.Items>
-                </ComboBox>
+                <ComboBox Width="80"
+                          SelectedItem="{Binding SelectedIndex}"
+                          SelectionChanged="OnPaletteEntryChanged"
+                          Loaded="OnPaletteComboLoaded" />
               </DockPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

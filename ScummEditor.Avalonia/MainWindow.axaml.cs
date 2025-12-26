@@ -25,6 +25,8 @@ using ScummEditor.Structures.IndexFile;
 using AvaloniaBitmap = Avalonia.Media.Imaging.Bitmap;
 using DrawingBitmap = System.Drawing.Bitmap;
 
+#pragma warning disable CA1416
+
 namespace ScummEditor.AvaloniaApp
 {
   public partial class MainWindow : Window
@@ -910,10 +912,8 @@ namespace ScummEditor.AvaloniaApp
       }
       else if (block.BlockType == "SCRP" || block.BlockType == "SOUN")
       {
-        var placeholder = new PlaceholderView();
-        placeholder.SetText(block.BlockType, "Preview not implemented yet. Use the Hex tab to inspect raw bytes.");
-        preview = placeholder;
         hex ??= TryHexFallback(block);
+        preview = hex;
       }
       else if (block.BlockType == "BOXD" || block.BlockType == "BOXM")
       {
@@ -1362,3 +1362,5 @@ namespace ScummEditor.AvaloniaApp
     public double LeftPaneWidth { get; set; } = 280;
   }
 }
+
+#pragma warning restore CA1416

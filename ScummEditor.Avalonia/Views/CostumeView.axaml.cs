@@ -11,6 +11,8 @@ using ScummEditor.Encoders;
 using ScummEditor.Structures.DataFile;
 using DrawingBitmap = System.Drawing.Bitmap;
 
+#pragma warning disable CA1416
+
 namespace ScummEditor.AvaloniaApp.Views
 {
   public partial class CostumeView : UserControl
@@ -168,14 +170,14 @@ namespace ScummEditor.AvaloniaApp.Views
     private void BuildPaletteEntries(RoomBlock room, Costume costume)
     {
       _paletteEntries.Clear();
-      _paletteCount = room.GetDefaultPalette()?.Colors?.Count ?? 0;
+      _paletteCount = room.GetDefaultPalette()?.Colors?.Length ?? 0;
       if (_paletteCount == 0 || costume.Palette == null) return;
 
       var defaultPalette = room.GetDefaultPalette();
       for (int i = 0; i < costume.Palette.Count; i++)
       {
         var realIndex = costume.Palette[i];
-        var color = realIndex < defaultPalette.Colors.Count ? defaultPalette.Colors[realIndex] : System.Drawing.Color.Black;
+        var color = realIndex < defaultPalette.Colors.Length ? defaultPalette.Colors[realIndex] : System.Drawing.Color.Black;
         _paletteEntries.Add(new PaletteEntry(i, realIndex, color));
       }
     }
@@ -183,11 +185,6 @@ namespace ScummEditor.AvaloniaApp.Views
     private void PopulatePaletteComboChoices()
     {
       // Populate combo items via code because XAML array is static.
-      var options = Enumerable.Range(0, _paletteCount).Cast<object>().ToArray();
-      foreach (var item in PaletteList.Items.OfType<PaletteEntry>())
-      {
-        // no-op; the template-level static array cannot be set per-item, so instead we'll use SelectionChanged handler to keep mapping.
-      }
       PaletteList.ItemTemplate = PaletteList.ItemTemplate; // force refresh; items themselves carry selected index.
     }
 
@@ -202,11 +199,21 @@ namespace ScummEditor.AvaloniaApp.Views
       _costume.Palette[entry.Index] = (byte)selected;
 
       var defaultPalette = _room.GetDefaultPalette();
-      var color = selected < defaultPalette.Colors.Count ? defaultPalette.Colors[selected] : System.Drawing.Color.Black;
+      var color = selected < defaultPalette.Colors.Length ? defaultPalette.Colors[selected] : System.Drawing.Color.Black;
       entry.UpdateColor(color);
       PaletteList.ItemsSource = null;
       PaletteList.ItemsSource = _paletteEntries;
       RenderSelectedFrame();
+    }
+
+    private void OnPaletteComboLoaded(object? sender, RoutedEventArgs e)
+    {
+      if (sender is not ComboBox combo) return;
+      combo.ItemsSource = Enumerable.Range(0, _paletteCount).ToList();
+      if (combo.DataContext is PaletteEntry entry)
+      {
+        combo.SelectedItem = entry.SelectedIndex;
+      }
     }
 
     private static string DescribeCommand(byte command)
@@ -339,3 +346,5 @@ namespace ScummEditor.AvaloniaApp.Views
     }
   }
 }
+
+#pragma warning restore CA1416
