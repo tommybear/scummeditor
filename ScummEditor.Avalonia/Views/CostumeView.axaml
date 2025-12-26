@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScummEditor.AvaloniaApp.Views.CostumeView"
+             Padding="12">
+  <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="260,*">
+    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
+      <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" Foreground="#E6EDF3" />
+      <TextBlock x:Name="DetailText" FontSize="12" Foreground="#B5BAC1" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
+      <ComboBox x:Name="PalettePicker" Width="180" SelectionChanged="OnPaletteChanged" />
+      <CheckBox x:Name="TransparentCheck" Content="Transparent color" IsChecked="True" Checked="OnTransparencyChanged" Unchecked="OnTransparencyChanged" />
+    </StackPanel>
+
+    <ListBox x:Name="FramesList"
+             Grid.Row="2"
+             Grid.Column="0"
+             SelectionChanged="OnFrameSelectionChanged"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Spacing="2" Margin="0 2">
+            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Meta}" FontSize="10" Foreground="#9BA3AE" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Border Grid.Row="2" Grid.Column="1" Background="#1E1E1E" BorderBrush="#2A2F37" BorderThickness="1" CornerRadius="4" Padding="8">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <Image x:Name="FrameImage" Stretch="None" />
+          <TextBlock x:Name="FrameMeta" Margin="0 8 0 0" Foreground="#B5BAC1" />
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

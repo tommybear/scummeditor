@@ -893,9 +893,20 @@ namespace ScummEditor.AvaloniaApp
       }
       else if (block is Costume costume)
       {
-        var placeholder = new PlaceholderView();
-        placeholder.SetText("Costume", $"Animations: {costume.NumAnim}, Palette entries: {costume.Palette?.Count ?? 0}, Limbs: {costume.Limbs?.Count ?? 0}");
-        preview = placeholder;
+        var room = costume.FindAncestor<DiskBlock>()?.GetROOM();
+        if (room != null)
+        {
+          var view = new CostumeView();
+          view.Load(room, costume);
+          preview = view;
+        }
+        else
+        {
+          var placeholder = new PlaceholderView();
+          placeholder.SetText("Costume", $"Animations: {costume.NumAnim}, Palette entries: {costume.Palette?.Count ?? 0}, Limbs: {costume.Limbs?.Count ?? 0}");
+          preview = placeholder;
+        }
+        hex ??= TryHexFallback(block);
       }
       else if (block.BlockType == "SCRP" || block.BlockType == "SOUN")
       {
@@ -1101,13 +1112,13 @@ namespace ScummEditor.AvaloniaApp
             if (box.Points.Count < 3) continue;
             var pts = box.Points.Select(p => new PointF(p.X, p.Y)).ToArray();
             var color = GetSlotColor(box, slotCount);
-            using var pen = new Pen(color, 1);
-            using var brush = new SolidBrush(Color.FromArgb(40, color.R, color.G, color.B));
+            using var pen = new Pen(color, 1.25f);
+            using var brush = new SolidBrush(Color.FromArgb(30, color.R, color.G, color.B));
             g.FillPolygon(brush, pts);
             g.DrawPolygon(pen, pts);
 
             var center = box.GetCentroid();
-            var label = box.UsesScaleSlot ? $"{box.Index} s{box.ScaleSlot}" : $"{box.Index} {box.FixedScale}%";
+            var label = BuildBoxLabel(box);
             using var fontFamily = new FontFamily("Arial");
             using var font = new Font(fontFamily, 8, System.Drawing.FontStyle.Bold);
             using var textBrush = new SolidBrush(Color.White);
@@ -1159,6 +1170,17 @@ namespace ScummEditor.AvaloniaApp
       byte G = (byte)Math.Clamp((g + m) * 255, 0, 255);
       byte B = (byte)Math.Clamp((b + m) * 255, 0, 255);
       return Color.FromArgb(255, R, G, B);
+    }
+
+    private static string BuildBoxLabel(WalkBox box)
+    {
+      if (box.UsesScaleSlot)
+      {
+        var scaleText = box.ComputedScale.HasValue ? $"{box.ComputedScale:0}%" : "?";
+        return $"{box.Index} s{box.ScaleSlot}:{scaleText}";
+      }
+
+      return box.FixedScale >= 0 ? $"{box.Index} {box.FixedScale}%" : box.Index.ToString();
     }
 
     private Control? TryCreateZPlaneView(ZPlane zPlane)
