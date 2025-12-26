@@ -28,6 +28,7 @@ namespace ScummEditor.AvaloniaApp.Views
     private IReadOnlyList<LimbEntry> _limbs = Array.Empty<LimbEntry>();
     private ObservableCollection<PaletteEntry> _paletteEntries = new();
     private int _paletteCount = 0;
+    private List<int> _paletteIndexOptions = new();
 
     public CostumeView()
     {
@@ -65,6 +66,7 @@ namespace ScummEditor.AvaloniaApp.Views
       BuildPaletteEntries(room, costume);
       PaletteList.ItemsSource = _paletteEntries;
       PopulatePaletteComboChoices();
+      PopulatePaletteAllCombo();
       RenderSelectedFrame();
     }
 
@@ -173,6 +175,8 @@ namespace ScummEditor.AvaloniaApp.Views
       _paletteCount = room.GetDefaultPalette()?.Colors?.Length ?? 0;
       if (_paletteCount == 0 || costume.Palette == null) return;
 
+      _paletteIndexOptions = Enumerable.Range(0, _paletteCount).ToList();
+
       var defaultPalette = room.GetDefaultPalette();
       for (int i = 0; i < costume.Palette.Count; i++)
       {
@@ -186,6 +190,12 @@ namespace ScummEditor.AvaloniaApp.Views
     {
       // Populate combo items via code because XAML array is static.
       PaletteList.ItemTemplate = PaletteList.ItemTemplate; // force refresh; items themselves carry selected index.
+    }
+
+    private void PopulatePaletteAllCombo()
+    {
+      PaletteAllCombo.ItemsSource = _paletteIndexOptions;
+      PaletteAllCombo.SelectedIndex = _paletteIndexOptions.Count > 0 ? 0 : -1;
     }
 
     private void OnPaletteEntryChanged(object? sender, SelectionChangedEventArgs e)
@@ -214,6 +224,30 @@ namespace ScummEditor.AvaloniaApp.Views
       {
         combo.SelectedItem = entry.SelectedIndex;
       }
+    }
+
+    private void OnPaletteApplyAll(object? sender, RoutedEventArgs e)
+    {
+      if (_room == null || _costume == null) return;
+      if (PaletteAllCombo.SelectedItem is not int selected) return;
+      if (selected < 0 || selected >= _paletteCount) return;
+
+      for (int i = 0; i < _costume.Palette.Count; i++)
+      {
+        _costume.Palette[i] = (byte)selected;
+      }
+
+      var defaultPalette = _room.GetDefaultPalette();
+      var color = selected < defaultPalette.Colors.Length ? defaultPalette.Colors[selected] : System.Drawing.Color.Black;
+      foreach (var entry in _paletteEntries)
+      {
+        entry.SelectedIndex = selected;
+        entry.UpdateColor(color);
+      }
+
+      PaletteList.ItemsSource = null;
+      PaletteList.ItemsSource = _paletteEntries;
+      RenderSelectedFrame();
     }
 
     private static string DescribeCommand(byte command)

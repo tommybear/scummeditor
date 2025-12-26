@@ -70,23 +70,30 @@
         </ListBox>
       </TabItem>
       <TabItem Header="Palette">
-        <ListBox x:Name="PaletteList">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <DockPanel Margin="0 2" LastChildFill="False">
-                <Border Width="36" Height="18" CornerRadius="3" Background="{Binding Brush}" Margin="0 0 8 0" />
-                <StackPanel Orientation="Vertical" Margin="0 0 8 0">
-                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding ColorText}" FontSize="10" Foreground="#9BA3AE" />
-                </StackPanel>
-                <ComboBox Width="80"
-                          SelectedItem="{Binding SelectedIndex}"
-                          SelectionChanged="OnPaletteEntryChanged"
-                          Loaded="OnPaletteComboLoaded" />
-              </DockPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Quick apply index:" VerticalAlignment="Center" />
+            <ComboBox x:Name="PaletteAllCombo" Width="90" />
+            <Button Content="Apply to all" Click="OnPaletteApplyAll" />
+          </StackPanel>
+          <ListBox x:Name="PaletteList">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="0 2" LastChildFill="False">
+                  <Border Width="36" Height="18" CornerRadius="3" Background="{Binding Brush}" Margin="0 0 8 0" />
+                  <StackPanel Orientation="Vertical" Margin="0 0 8 0">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ColorText}" FontSize="10" Foreground="#9BA3AE" />
+                  </StackPanel>
+                  <ComboBox Width="80"
+                            SelectedItem="{Binding SelectedIndex}"
+                            SelectionChanged="OnPaletteEntryChanged"
+                            Loaded="OnPaletteComboLoaded" />
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
       </TabItem>
     </TabControl>
 

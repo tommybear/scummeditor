@@ -417,12 +417,12 @@ namespace ScummEditor.AvaloniaApp
             if (images[imgIndex].GetSMAP() == null)
             {
               img = bompDecoder.Decode(currentRoom, objIndex, imgIndex);
-              usedIndexes = bompDecoder.UsedIndexes.ToArray();
+              usedIndexes = bompDecoder.UsedIndexes?.ToArray() ?? Array.Empty<int>();
             }
             else
             {
               img = decoder.Decode(currentRoom, objIndex, imgIndex);
-              usedIndexes = decoder.UsedIndexes.ToArray();
+              usedIndexes = decoder.UsedIndexes?.ToArray() ?? Array.Empty<int>();
             }
 
             if (img != null)
@@ -455,6 +455,7 @@ namespace ScummEditor.AvaloniaApp
         for (int costumeIndex = 0; costumeIndex < costumes.Count; costumeIndex++)
         {
           var costume = costumes[costumeIndex];
+          if (costume.Pictures == null) continue;
           for (int frameIndex = 0; frameIndex < costume.Pictures.Count; frameIndex++)
           {
             if (costume.Pictures[frameIndex].ImageData.Length == 0 || costume.Pictures[frameIndex].ImageData.Length == 1 && costume.Pictures[frameIndex].ImageData[0] == 0)
@@ -913,7 +914,16 @@ namespace ScummEditor.AvaloniaApp
       else if (block.BlockType == "SCRP" || block.BlockType == "SOUN")
       {
         hex ??= TryHexFallback(block);
-        preview = hex;
+        if (block.BlockType == "SOUN" && block is NotImplementedDataBlock dataBlock && dataBlock.Contents != null)
+        {
+          var view = new SoundView();
+          view.Load(block.BlockType, dataBlock.Contents);
+          preview = view;
+        }
+        else
+        {
+          preview = hex;
+        }
       }
       else if (block.BlockType == "BOXD" || block.BlockType == "BOXM")
       {
